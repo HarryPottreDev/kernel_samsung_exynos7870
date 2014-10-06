@@ -169,6 +169,7 @@ static inline bool sb_has_quota_active(struct super_block *sb, int type)
  */
 extern const struct dquot_operations dquot_operations;
 extern const struct quotactl_ops dquot_quotactl_ops;
+extern const struct quotactl_ops dquot_quotactl_sysfile_ops;
 
 #else
 
