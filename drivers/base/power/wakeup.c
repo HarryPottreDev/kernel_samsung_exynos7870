@@ -1020,6 +1020,9 @@ static int wakeup_sources_stats_show(struct seq_file *m, void *unused)
 {
 	struct wakeup_source *ws;
 
+	if (!strcmp(current->comm, "batterystats-wo"))
+		return 0;
+
 #ifdef CONFIG_SEC_PM_DEBUG
 	seq_puts(m, "name\t\tactive_count\tevent_count\twakeup_count\t"
 		"expire_count\tactive_since\ttotal_time\tmax_time\t"
