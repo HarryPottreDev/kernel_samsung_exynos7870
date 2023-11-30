@@ -597,6 +597,7 @@ struct ist30xx_data {
 	struct mutex aod_lock;
 	struct i2c_client *client;
 	struct input_dev *input_dev;
+        struct input_dev *input_dev_pad;
 	struct ist30xx_dt_data *dt_data;
 	TSP_INFO tsp_info;
 	TKEY_INFO tkey_info;
