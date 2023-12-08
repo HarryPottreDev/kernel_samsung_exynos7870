@@ -2523,8 +2523,8 @@ unlock_out:
 	return copied;
 }
 
-static int check_direct_IO(struct inode *inode, struct iov_iter *iter,
-			   loff_t offset)
+static int check_direct_IO(struct inode *inode, int rw,
+		struct iov_iter *iter, loff_t offset)
 {
 	unsigned i_blkbits = READ_ONCE(inode->i_blkbits);
 	unsigned blkbits = i_blkbits;
@@ -2554,7 +2554,7 @@ static ssize_t f2fs_direct_IO(int rw, struct kiocb *iocb, struct iov_iter *iter,
 	/* enum rw_hint hint = iocb->ki_hint;
 	int whint_mode = F2FS_OPTION(sbi).whint_mode; */
 
-	err = check_direct_IO(inode, iter, offset);
+	err = check_direct_IO(inode, rw, iter, offset);
 	if (err)
 		return err < 0 ? err : 0;
 

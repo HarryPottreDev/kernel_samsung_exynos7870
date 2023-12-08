@@ -88,7 +88,7 @@ static inline bool ext4_bio_encrypted(struct bio *bio)
 }
 
 static void
-ext4_trace_read_completion(struct bio *bio, int err)
+ext4_trace_read_completion(struct bio *bio)
 {
 	struct page *first_page = bio->bi_io_vec[0].bv_page;
 
@@ -116,7 +116,7 @@ static void mpage_end_io(struct bio *bio, int err)
 	int i;
 
 	if (trace_android_fs_dataread_start_enabled())
-		ext4_trace_read_completion(bio, err);
+		ext4_trace_read_completion(bio);
 
 	if (ext4_bio_encrypted(bio)) {
 		struct ext4_crypto_ctx *ctx = bio->bi_private;
@@ -204,8 +204,8 @@ int ext4_mpage_readpages(struct address_space *mapping,
 		if (pages) {
 			page = list_entry(pages->prev, struct page, lru);
 			list_del(&page->lru);
-			if (add_to_page_cache_lru(page, mapping,
-						  page->index, GFP_KERNEL))
+			if (add_to_page_cache_lru(page, mapping, page->index,
+					GFP_KERNEL & mapping_gfp_mask(mapping)))
 				goto next_page;
 		}
 
@@ -323,7 +323,7 @@ int ext4_mpage_readpages(struct address_space *mapping,
 					goto set_error_page;
 			}
 			bio = bio_alloc(GFP_KERNEL,
-				min_t(int, nr_pages, bio_get_nr_vecs(bdev)));
+				min_t(int, nr_pages, BIO_MAX_PAGES));
 			if (!bio) {
 				if (ctx)
 					ext4_release_crypto_ctx(ctx);
@@ -363,5 +363,6 @@ int ext4_mpage_readpages(struct address_space *mapping,
 	BUG_ON(pages && !list_empty(pages));
 	if (bio)
 		ext4_submit_bio_read(bio);
+
 	return 0;
 }

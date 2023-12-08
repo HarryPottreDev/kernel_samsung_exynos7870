@@ -8,7 +8,6 @@
 
 #include <linux/fs.h>
 #include <linux/time.h>
-#include <linux/jbd2.h>
 #include <linux/highuid.h>
 #include <linux/pagemap.h>
 #include <linux/quotaops.h>
@@ -18,14 +17,12 @@
 #include <linux/pagevec.h>
 #include <linux/mpage.h>
 #include <linux/namei.h>
-#include <linux/aio.h>
 #include <linux/uio.h>
 #include <linux/bio.h>
 #include <linux/workqueue.h>
 #include <linux/kernel.h>
 #include <linux/slab.h>
 #include <linux/mm.h>
-#include <linux/ratelimit.h>
 #include <linux/backing-dev.h>
 
 #include "ext4_jbd2.h"
@@ -321,8 +318,6 @@ static void ext4_end_bio(struct bio *bio, int error)
 
 	BUG_ON(!io_end);
 	bio->bi_end_io = NULL;
-	if (test_bit(BIO_UPTODATE, &bio->bi_flags))
-		error = 0;
 
 	if (error) {
 		struct inode *inode = io_end->inode;
@@ -361,9 +356,10 @@ void ext4_io_submit(struct ext4_io_submit *io)
 	struct bio *bio = io->io_bio;
 
 	if (bio) {
+		int io_op = io->io_wbc->sync_mode == WB_SYNC_ALL ?
+			    WRITE_SYNC : WRITE;
 		bio_get(io->io_bio);
-		submit_bio(io->io_op, io->io_bio);
-		BUG_ON(bio_flagged(io->io_bio, BIO_EOPNOTSUPP));
+		submit_bio(io_op, io->io_bio);
 		bio_put(io->io_bio);
 	}
 	io->io_bio = NULL;
@@ -372,7 +368,7 @@ void ext4_io_submit(struct ext4_io_submit *io)
 void ext4_io_submit_init(struct ext4_io_submit *io,
 			 struct writeback_control *wbc)
 {
-	io->io_op = (wbc->sync_mode == WB_SYNC_ALL ?  WRITE_SYNC : WRITE);
+	io->io_wbc = wbc;
 	io->io_bio = NULL;
 	io->io_end = NULL;
 }
@@ -380,10 +376,9 @@ void ext4_io_submit_init(struct ext4_io_submit *io,
 static int io_submit_init_bio(struct ext4_io_submit *io,
 			      struct buffer_head *bh)
 {
-	int nvecs = bio_get_nr_vecs(bh->b_bdev);
 	struct bio *bio;
 
-	bio = bio_alloc(GFP_NOIO, min(nvecs, BIO_MAX_PAGES));
+	bio = bio_alloc(GFP_NOIO, BIO_MAX_PAGES);
 	if (!bio)
 		return -ENOMEM;
 	bio->bi_iter.bi_sector = bh->b_blocknr * (bh->b_size >> 9);
